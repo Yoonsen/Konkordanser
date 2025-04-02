@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Concordance App</title>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 2em auto; }
+    label, input, button { margin: 0.5em 0; display: block; }
+    .concordance { margin: 0.5em 0; border-bottom: 1px solid #ccc; padding-bottom: 0.5em; }
+    .highlight { font-weight: bold; color: darkred; }
+  </style>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#a22" />
+  
+</head>
+<body>
+  <h1>NB Concordance Viewer</h1>
+
+  <label>Author:
+    <input type="text" id="author" placeholder="e.g. Ibsen">
+  </label>
+
+  <label>Fulltext query:
+    <input type="text" id="fulltext" placeholder="e.g. Norge">
+  </label>
+
+  <label>Concordance search term:
+    <input type="text" id="query" placeholder="e.g. Norge">
+  </label>
+
+  <button onclick="run()">Search</button>
+
+  <div id="results"></div>
+
+  <script>
+    async function run() {
+      const author = document.getElementById("author").value;
+      const fulltext = document.getElementById("fulltext").value;
+      const query = document.getElementById("query").value;
+
+      const corpusBody = {
+        author: author,
+        fulltext: fulltext,
+        doctype: "digibok",
+        from_year: 1980,
+        to_year: 2020,
+        limit: 20000
+      };
+
+      const corpusResp = await fetch("https://api.nb.no/dhlab/build_corpus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpusBody)
+      });
+
+      const corpus = await corpusResp.json();
+      const dhlabids = Object.values(corpus.dhlabid).slice(0, 200);
+
+
+      if (dhlabids.length === 0) {
+        document.getElementById("results").innerHTML = "<p>No results.</p>";
+        return;
+      }
+
+      const concBody = {
+        dhlabids: dhlabids,
+        query: query,
+        limit: 1000,
+        window: 20,
+        html_formatting: true
+      };
+
+      const concResp = await fetch("https://api.nb.no/dhlab/conc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(concBody)
+      });
+
+      const conc = await concResp.json();
+
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "<h2>Concordances</h2>";
+
+ Object.values(conc.conc).forEach(text => {
+  const div = document.createElement("div");
+  div.className = "concordance";
+  div.innerHTML = text;
+  resultsDiv.appendChild(div);
+});
+
+    }
+  </script>
+</body>
+</html>
